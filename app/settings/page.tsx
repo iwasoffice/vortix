@@ -45,8 +45,28 @@ export default function Settings() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    void Promise.all([fetch("/api/v1/me"), fetch("/api/v1/api-keys")]).then(async ([merchantResponse, keysResponse]) => {
+      if (!active) return;
+      if (merchantResponse.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      const merchant = await merchantResponse.json();
+      const keyData = await keysResponse.json();
+      if (!active) return;
+      if (!merchantResponse.ok) {
+        setError(merchant.error || "Unable to load merchant settings");
+        return;
+      }
+      setError("");
+      setMe(merchant);
+      setKeys(Array.isArray(keyData) ? keyData : []);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function createKey() {
     if (!me) return;
