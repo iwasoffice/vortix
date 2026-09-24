@@ -1,0 +1,15 @@
+name: Desktop release
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    strategy: {matrix: {platform: [macos-latest, ubuntu-22.04, windows-latest]}}
+    runs-on: "${{ matrix.platform }}"
+    defaults: {run: {working-directory: clients/desktop}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm install
+      - run: npm run tauri build
