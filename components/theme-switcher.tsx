@@ -17,6 +17,8 @@ function readPreference(): Preference {
   return value === "light" || value === "dark" || value === "system" ? value : "system";
 }
 
+function getServerPreference(): Preference { return "system"; }
+
 function subscribe(callback: () => void) {
   window.addEventListener("storage", callback);
   window.addEventListener(CHANGE_EVENT, callback);
@@ -39,7 +41,7 @@ function apply(preference: Preference) {
 }
 
 export function ThemeSwitcher() {
-  const preference = useSyncExternalStore(subscribe, readPreference, () => "system");
+  const preference = useSyncExternalStore<Preference>(subscribe, readPreference, getServerPreference);
 
   useEffect(() => {
     apply(preference);
