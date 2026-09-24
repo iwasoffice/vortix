@@ -77,8 +77,28 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    void Promise.all([fetch("/api/v1/me"), fetch("/api/v1/transactions")]).then(async ([merchantResponse, transactionsResponse]) => {
+      if (!active) return;
+      if (merchantResponse.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      const merchant = await merchantResponse.json();
+      const transactions = await transactionsResponse.json();
+      if (!active) return;
+      if (!merchantResponse.ok || !transactionsResponse.ok) {
+        setError(merchant.error || transactions.error || "Unable to load dashboard");
+        return;
+      }
+      setError("");
+      setMe(merchant);
+      setItems(Array.isArray(transactions) ? transactions : []);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
