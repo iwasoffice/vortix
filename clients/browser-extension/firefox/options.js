@@ -1,0 +1,1 @@
+const d={baseUrl:"http://localhost:3000",apiKey:""};chrome.storage.local.get(d,c=>{url.value=c.baseUrl;key.value=c.apiKey});save.onclick=()=>chrome.storage.local.set({baseUrl:url.value.replace(/\/$/,""),apiKey:key.value},()=>done.textContent=" Saved");

@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+coverage/
+.env
+.env.*
+!.env.example
+.vercel/
+*.log
+.DS_Store
+clients/mobile/.expo/
+clients/mobile/android/
+clients/mobile/ios/
+clients/desktop/node_modules/
+clients/desktop/src-tauri/target/

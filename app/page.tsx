@@ -1,19 +1,3 @@
-import Link from "next/link";
-
-export default function Home() {
-  return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-6 px-6 text-center">
-      <h1 className="text-4xl font-bold text-white">Vortix</h1>
-      <p className="max-w-md text-vortix-muted">
-        Payment gateway infrastructure — transaction routing, risk scoring,
-        and ledger, running live in this demo.
-      </p>
-      <Link
-        href="/dashboard"
-        className="rounded-lg bg-vortix-accent px-6 py-3 font-medium text-white hover:opacity-90 transition"
-      >
-        Open Dashboard →
-      </Link>
-    </main>
-  );
-}
+import Link from "next/link";import {ArrowRight,KeyRound,ShieldCheck,Waypoints,Zap} from "lucide-react";import {AppShell} from "@/components/app-shell";
+const cards=[{icon:ShieldCheck,title:"Tenant-safe payment operations",text:"Supabase Auth and row-level security isolate every merchant workspace and its payment data."},{icon:Waypoints,title:"Live provider orchestration",text:"Route hosted checkout requests to configured Paystack, Flutterwave, or Monnify rails."},{icon:KeyRound,title:"Merchant API access",text:"Issue scoped Vortix API keys for server integrations without exposing provider credentials."}];
+export default function Home(){return <AppShell><main><section className="mx-auto max-w-7xl px-5 pb-20 pt-20 lg:px-8 lg:pt-28"><div className="max-w-4xl"><div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-400/10 px-3 py-1 text-sm text-blue-400"><Zap className="size-4"/>Payment orchestration infrastructure</div><h1 className="max-w-5xl text-5xl font-semibold tracking-[-.04em] md:text-7xl">One payment control plane for African commerce.</h1><p className="muted mt-6 max-w-2xl text-lg leading-8">Vortix gives merchants one account, one operational dashboard and one API for payment routing, risk review, provider webhooks and reconciliation.</p><div className="mt-8 flex flex-wrap gap-3"><Link className="btn btn-primary" href="/signup">Create merchant account <ArrowRight className="size-4"/></Link><Link className="btn btn-secondary" href="/login">Sign in</Link></div></div><div className="mt-16 grid gap-4 md:grid-cols-3">{cards.map(({icon:Icon,title,text})=><div className="panel p-6" key={title}><Icon className="mb-8 size-6 text-blue-400"/><h2 className="text-lg font-semibold">{title}</h2><p className="muted mt-2 leading-7">{text}</p></div>)}</div></section></main></AppShell>}

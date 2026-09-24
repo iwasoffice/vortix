@@ -1,0 +1,1 @@
+{"expo":{"name":"Vortix","slug":"vortix","version":"2.0.0","scheme":"vortix","orientation":"portrait","userInterfaceStyle":"automatic","ios":{"bundleIdentifier":"com.example.vortix"},"android":{"package":"com.example.vortix","adaptiveIcon":{"backgroundColor":"#07101d"}},"plugins":["expo-router","expo-secure-store","expo-notifications"],"experiments":{"typedRoutes":true}}}

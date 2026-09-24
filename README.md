@@ -1,38 +1,61 @@
-# Vortix Engine
+# Vortix
 
-Payment gateway infrastructure engine — transaction routing, risk scoring, and ledger — with a live dashboard for demoing the flow end to end.
+Vortix is a commercial payment-orchestration control plane for merchants. The web application uses Next.js, Supabase Auth/Postgres/RLS, hosted payment checkouts, signed provider webhooks, risk controls, tenant-scoped API keys, and reconciliation infrastructure.
 
-## What this is
+## Production architecture
 
-A working simulation of the core decision-making layer inside a payment gateway:
+- **Web/PWA:** Next.js 16 on the repository's connected Vercel project.
+- **Identity and database:** Supabase Auth + Postgres + Row Level Security.
+- **Payment providers:** Paystack, Flutterwave and Monnify adapters. A provider is used only when its live secret credentials are configured.
+- **Webhooks:** signatures are verified and successful payments are independently re-verified with the provider before Vortix records settlement.
+- **Render:** intended for reconciliation/background jobs from this same repository.
+- **Clients:** browser extension, mobile and desktop companion source remains under `clients/`.
 
-1. **Risk scoring** (`lib/engine/riskEngine.ts`) — scores each transaction 0–100 using rule-based heuristics (amount, currency, customer/merchant patterns). Anything ≥70 is flagged for manual review instead of auto-processing.
-2. **Routing** (`lib/engine/router.ts`) — decides which processor handles a transaction based on currency and amount. Currently routes between simulated Paystack/Flutterwave/internal wallet rails; built so a real provider integration slots in without touching the rest of the pipeline.
-3. **Ledger** (`lib/engine/ledger.ts`) — posts settled transactions as balanced double-entry records (processor clearing → merchant payable + Vortix fees), the way a real financial ledger has to reconcile.
-4. **Dashboard** (`app/dashboard`) — live view of transaction volume by processor, status breakdown, and a feed of recent transactions, backed by the same API the engine exposes.
+## Accounts
 
-## Architecture notes
+Users register at `/signup`. A successful signup automatically creates a private merchant workspace and owner membership. Merchant rows, transactions, API keys and ledger records are isolated by Supabase RLS.
 
-- `lib/engine/store.ts` is an in-memory store standing in for a database. Every other module talks to it through functions, not the arrays directly — so swapping in Postgres/Prisma later is contained to this one file.
-- `app/api/webhooks/[provider]/route.ts` is a stub for real processor callbacks (signature verification, idempotency) — left unimplemented until a live processor is wired in.
-- Fee rate, risk thresholds, and routing rules are intentionally simple and centralized so they're easy to point to and explain, and easy to replace with real business logic.
+## Provider credentials
 
-## Running locally
+Do not commit secrets. Configure these only in the production deployment environment:
+
+```text
+PAYSTACK_SECRET_KEY
+FLUTTERWAVE_SECRET_KEY
+FLUTTERWAVE_SECRET_HASH
+MONNIFY_API_KEY
+MONNIFY_SECRET_KEY
+MONNIFY_CONTRACT_CODE
+SUPABASE_SECRET_KEY
+```
+
+Public Supabase URL/publishable-key values are safe for browser use and are already represented in `.env.example`.
+
+## Webhooks
+
+Configure provider dashboards with:
+
+```text
+https://<production-host>/api/webhooks/paystack
+https://<production-host>/api/webhooks/flutterwave
+https://<production-host>/api/webhooks/monnify
+```
+
+## Security properties
+
+- Hosted checkout only; Vortix does not collect card PAN/CVV.
+- Payment success requires verified provider status plus amount/currency match.
+- Webhook deduplication is persisted.
+- API keys are returned once; only SHA-256 hashes are stored.
+- Merchant data is protected with tenant-aware RLS.
+- High-risk transactions can be held before checkout initialization.
+
+## Local development
 
 ```bash
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
-Visit `/dashboard` and use the form to simulate transactions through the engine.
-
-## Deploying
-
-Deploys cleanly to Vercel with zero config — it's a standard Next.js App Router project.
-
-## Roadmap
-
-- [ ] Swap in-memory store for Postgres (Prisma)
-- [ ] Real processor integration (Paystack/Flutterwave) behind the existing router interface
-- [ ] Webhook signature verification per provider
-- [ ] Auth on the transactions API
+A real provider secret is required before the dashboard can create a checkout. Missing provider credentials result in a configuration error, never simulated success.

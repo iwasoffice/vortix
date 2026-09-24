@@ -1,15 +1,4 @@
-import type { Metadata } from "next";
-import "./globals.css";
-
-export const metadata: Metadata = {
-  title: "Vortix Engine",
-  description: "Payment gateway infrastructure — routing, risk, and ledger engine",
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
-}
+import type {Metadata} from "next";import "./globals.css";import {PwaRegister} from "@/components/pwa-register";
+export const metadata:Metadata={title:{default:"Vortix Engine",template:"%s | Vortix Engine"},description:"Payment orchestration infrastructure for routing, risk controls, webhooks and settlement."};
+const themeScript=`(function(){try{var s=localStorage.getItem('vortix-theme');var p=s==='light'||s==='dark'||s==='system'?s:'system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.dataset.themePreference=p;document.documentElement.dataset.theme=r;document.documentElement.style.colorScheme=r}catch(e){document.documentElement.dataset.theme='dark';document.documentElement.style.colorScheme='dark'}})();`;
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en" suppressHydrationWarning><head><script id="vortix-theme-bootstrap" dangerouslySetInnerHTML={{__html:themeScript}}/></head><body><PwaRegister/>{children}</body></html>}

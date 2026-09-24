@@ -1,0 +1,7 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment: {POSTGRES_DB: vortix, POSTGRES_USER: vortix, POSTGRES_PASSWORD: vortix}
+    ports: ["5432:5432"]
+    volumes: ["vortix_pg:/var/lib/postgresql/data"]
+volumes: {vortix_pg: {}}

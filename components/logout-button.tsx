@@ -1,0 +1,1 @@
+"use client";import {LogOut} from "lucide-react";import {createClient} from "@/lib/supabase/client";export function LogoutButton(){return <button className="nav-link" onClick={async()=>{await createClient().auth.signOut();window.location.href="/"}}><LogOut className="size-4"/><span>Sign out</span></button>}

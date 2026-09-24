@@ -1,0 +1,88 @@
+openapi: 3.1.0
+info:
+  title: Vortix API
+  version: 2.0.0
+  description: Commercial merchant payment orchestration API. Never send raw card numbers or CVV data to Vortix.
+servers:
+  - url: /
+components:
+  securitySchemes:
+    VortixApiKey:
+      type: apiKey
+      in: header
+      name: x-vortix-key
+    SupabaseBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+paths:
+  /api/v1/me:
+    get:
+      summary: Current merchant context and provider readiness
+      security: [{VortixApiKey: []}, {SupabaseBearer: []}]
+      responses:
+        '200': {description: OK}
+        '401': {description: Unauthorized}
+  /api/v1/transactions:
+    get:
+      summary: List transactions in the authenticated merchant workspace
+      security: [{VortixApiKey: []}, {SupabaseBearer: []}]
+      responses:
+        '200': {description: OK}
+        '401': {description: Unauthorized}
+    post:
+      summary: Initialize a live hosted checkout
+      security: [{VortixApiKey: []}, {SupabaseBearer: []}]
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customerReference, customerEmail, amountMinor, currency]
+              properties:
+                merchantId:
+                  type: string
+                  format: uuid
+                  description: Required for user-session/bearer requests; inferred from x-vortix-key requests.
+                customerReference: {type: string}
+                customerEmail: {type: string, format: email}
+                customerName: {type: string}
+                amountMinor: {type: string, pattern: '^[0-9]+$'}
+                currency: {type: string, minLength: 3, maxLength: 3}
+                provider: {type: string, enum: [paystack, flutterwave, monnify]}
+      responses:
+        '201': {description: Hosted checkout initialized}
+        '202': {description: Held for risk review}
+        '400': {description: Invalid request}
+        '401': {description: Unauthorized}
+        '403': {description: Forbidden}
+        '503': {description: Server secret/provider not configured or provider unavailable}
+  /api/v1/api-keys:
+    get:
+      summary: List API-key metadata for the signed-in merchant
+      responses: {'200': {description: OK}}
+    post:
+      summary: Create a merchant-scoped Vortix API key; the plaintext value is returned only once
+      responses: {'201': {description: Key created}}
+  /api/webhooks/{provider}:
+    post:
+      summary: Signed payment-provider webhook intake
+      parameters:
+        - in: path
+          name: provider
+          required: true
+          schema: {type: string, enum: [paystack, flutterwave, monnify]}
+      responses:
+        '200': {description: Received and verified/processed}
+        '401': {description: Invalid signature}
+  /api/health:
+    get:
+      summary: Application and provider readiness
+      responses:
+        '200': {description: Healthy}
+        '503': {description: Degraded}

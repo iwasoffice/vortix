@@ -1,0 +1,2 @@
+import {describe,it,expect} from "vitest";import {assessRisk} from "@/lib/risk";
+describe("risk",()=>{it("keeps ordinary NGN low risk",()=>{expect(assessRisk(250000n,"NGN").score).toBe(5)});it("adds explainable signals",()=>{const r=assessRisk(600000000n,"USD",{ipCountry:"NG",billingCountry:"US"});expect(r.score).toBe(80);expect(r.level).toBe("high");expect(r.reasons.map(x=>x.code)).toEqual(expect.arrayContaining(["VERY_LARGE_AMOUNT","CROSS_BORDER_CURRENCY","GEO_MISMATCH"]))})});

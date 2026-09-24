@@ -1,25 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-
-/**
- * Webhook receiver for processor callbacks (Paystack, Flutterwave, etc.).
- * In production this must:
- *  1. Verify the signature header against a shared secret per provider
- *  2. Be idempotent (processor retries the same event on failure)
- *  3. Update the transaction status based on the event type
- *
- * Left as a stub here since it depends on each real provider's payload
- * shape and signing scheme — wire this up once you're integrating a
- * live processor rather than the simulated ones.
- */
-export async function POST(req: NextRequest, { params }: { params: { provider: string } }) {
-  const payload = await req.json().catch(() => null);
-
-  if (!payload) {
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
-  }
-
-  // TODO: verify signature for params.provider before trusting payload
-  // TODO: look up transaction by processor reference and update status
-
-  return NextResponse.json({ received: true, provider: params.provider });
-}
+import {createHmac,timingSafeEqual} from "node:crypto";import {NextRequest,NextResponse} from "next/server";import {createAdminClient} from "@/lib/supabase/admin";import {verifyPaystack} from "@/lib/providers/paystack";import {verifyFlutterwave} from "@/lib/providers/flutterwave";import {verifyMonnify} from "@/lib/providers/monnify";import {markFailed,markSucceeded} from "@/lib/payments/settlement";
+function safeEqual(a:string,b:string){try{return a.length===b.length&&timingSafeEqual(Buffer.from(a),Buffer.from(b))}catch{return false}}
+function valid(provider:string,raw:string,req:NextRequest){if(provider==="paystack"){const secret=process.env.PAYSTACK_SECRET_KEY,sig=req.headers.get("x-paystack-signature");return !!secret&&!!sig&&safeEqual(createHmac("sha512",secret).update(raw).digest("hex"),sig)}if(provider==="flutterwave"){const secret=process.env.FLUTTERWAVE_SECRET_HASH;if(!secret)return false;const v4=req.headers.get("flutterwave-signature");if(v4&&safeEqual(createHmac("sha256",secret).update(raw).digest("base64"),v4))return true;const legacy=req.headers.get("verif-hash");return !!legacy&&safeEqual(secret,legacy)}if(provider==="monnify"){const secret=process.env.MONNIFY_SECRET_KEY,sig=req.headers.get("monnify-signature");return !!secret&&!!sig&&safeEqual(createHmac("sha512",secret).update(raw).digest("hex"),sig)}return false}
+export async function POST(req:NextRequest,{params}:{params:Promise<{provider:string}>}){const {provider}=await params;if(!["paystack","flutterwave","monnify"].includes(provider))return NextResponse.json({error:"Unknown provider"},{status:404});const raw=await req.text();if(!valid(provider,raw,req))return NextResponse.json({error:"Invalid webhook signature"},{status:401});let payload:any;try{payload=JSON.parse(raw)}catch{return NextResponse.json({error:"Invalid JSON"},{status:400})}let admin;try{admin=createAdminClient()}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Server configuration error"},{status:503})}
+ const eventId=String(payload.id??payload.eventId??payload.data?.id??payload.eventData?.transactionReference??payload.data?.reference??payload.eventData?.paymentReference??crypto.randomUUID());const eventType=String(payload.event??payload.type??payload.eventType??"unknown");const {data:existing}=await admin.from("webhook_events").select("id,state").eq("provider",provider).eq("provider_event_id",eventId).maybeSingle();if(existing?.state==="processed")return NextResponse.json({received:true,duplicate:true});const {data:event,error:eventError}=await admin.from("webhook_events").upsert({provider,provider_event_id:eventId,event_type:eventType,state:"received",payload},{onConflict:"provider,provider_event_id"}).select("id").single();if(eventError)return NextResponse.json({error:eventError.message},{status:500});
+ try{let reference="",verified:any;if(provider==="paystack"){reference=String(payload.data?.reference||"");if(!reference)throw new Error("Missing Paystack reference");verified=await verifyPaystack(reference)}else if(provider==="flutterwave"){reference=String(payload.data?.tx_ref||payload.tx_ref||"");const transactionId=String(payload.data?.id||payload.id||"");if(!reference||!transactionId)throw new Error("Missing Flutterwave transaction identifiers");verified=await verifyFlutterwave(transactionId)}else{reference=String(payload.eventData?.paymentReference||payload.paymentReference||"");if(!reference)throw new Error("Missing Monnify payment reference");verified=await verifyMonnify(reference)}const {data:tx,error:txError}=await admin.from("payment_transactions").select("*").eq("reference",reference).maybeSingle();if(txError||!tx)throw new Error("Vortix transaction not found");let successful=false,amountMinor=0n,currency="";if(provider==="paystack"){successful=verified.status==="success";amountMinor=BigInt(String(verified.amount||0));currency=String(verified.currency||"")}else if(provider==="flutterwave"){successful=verified.status==="successful";amountMinor=BigInt(Math.round(Number(verified.amount||0)*100));currency=String(verified.currency||"")}else{successful=verified.paymentStatus==="PAID";amountMinor=BigInt(Math.round(Number(verified.amountPaid||0)*100));currency=String(verified.currencyCode||verified.currency||"")}if(amountMinor!==BigInt(tx.amount_minor)||currency.toUpperCase()!==String(tx.currency).toUpperCase())throw new Error("Verified provider amount or currency does not match Vortix transaction");if(successful)await markSucceeded(admin,tx,verified);else await markFailed(admin,tx,"PROVIDER_NOT_SUCCESSFUL","Provider verification did not report a successful payment",verified);await admin.from("webhook_events").update({state:"processed",transaction_id:tx.id,processed_at:new Date().toISOString()}).eq("id",event.id);return NextResponse.json({received:true})}catch(error){const message=error instanceof Error?error.message:"Webhook processing failed";await admin.from("webhook_events").update({state:"failed",error_message:message,processed_at:new Date().toISOString()}).eq("id",event.id);return NextResponse.json({received:true,processing:"failed",error:message},{status:500})}}

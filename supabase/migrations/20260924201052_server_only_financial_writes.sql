@@ -1,0 +1,14 @@
+revoke insert, update, delete on public.payment_transactions from authenticated;
+revoke insert, update, delete on public.transaction_events from authenticated;
+revoke insert, update, delete on public.ledger_entries from authenticated;
+revoke insert, update, delete on public.webhook_events from authenticated;
+revoke insert, update, delete on public.api_keys from authenticated;
+revoke insert, update, delete on public.merchant_members from authenticated;
+revoke select on public.api_keys from authenticated;
+grant select (id, merchant_id, name, key_prefix, created_by, last_used_at, revoked_at, created_at) on public.api_keys to authenticated;
+grant select on public.payment_transactions to authenticated;
+grant select on public.transaction_events to authenticated;
+grant select on public.ledger_entries to authenticated;
+grant select on public.merchant_members to authenticated;
+grant select, update on public.profiles to authenticated;
+grant select, update on public.merchants to authenticated;
